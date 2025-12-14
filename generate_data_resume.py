@@ -1,6 +1,7 @@
 import pdb
 import math
-import imageio
+import imageio.v2 as imageio
+
 import pyvista
 import numpy as np
 import pickle
@@ -52,6 +53,15 @@ def save_input(path, idx, patch, patch_seg, patch_coord, patch_edge):
 
     patch_edge = np.concatenate((np.int32(2*np.ones((patch_edge.shape[0],1))), patch_edge), 1)
     mesh = pyvista.PolyData(patch_coord)
+    patch_edge = patch_edge.astype(np.int64)
+    patch_edge = np.concatenate(
+    (np.int32(2*np.ones((edge_array.shape[0],1))), edge_array),
+    axis=1
+).astype(np.int64)
+
+mesh.lines = patch_edge.flatten()
+
+
     mesh.lines = patch_edge.flatten()
     mesh.save(path + 'vtp/sample_' + str(idx).zfill(6) + '_graph.vtp')
 
@@ -251,4 +261,5 @@ if __name__ == "__main__":
         mesh.lines = patch_edge.flatten()
 
         image_id = patch_extract(test_path, sat_img, seg, mesh, image_id)
+
 
