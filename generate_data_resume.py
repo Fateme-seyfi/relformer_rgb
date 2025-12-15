@@ -170,6 +170,18 @@ for x in range(180):
 # ====================================================
 # MAIN (RESUMABLE)
 # ====================================================
+START_REGION = 92   # ⬅️
+def get_resume_id(path):
+    raw_dir = os.path.join(path, "raw")
+    if not os.path.isdir(raw_dir):
+        return 1
+    files = [f for f in os.listdir(raw_dir) if f.endswith("_data.png")]
+    if not files:
+        return 1
+    ids = [int(f.split("_")[1]) for f in files]
+    return max(ids) + 1
+
+
 if __name__ == "__main__":
     
     root_dir = "/content/drive/MyDrive/relformer_data/20cities/"
@@ -188,13 +200,25 @@ if __name__ == "__main__":
     raw_files = []
     seg_files = []
     vtk_files = []
+    progress_file = train_path + "train_progress.txt"
+    if os.path.exists(progress_file):
+        with open(progress_file, "r") as f:
+           start_region = int(f.read()) + 1
+    else:
+        start_region = 0
+
 
     for ind in indrange_train:
         raw_files.append(root_dir + "region_%d_sat" % ind)
         seg_files.append(root_dir + "region_%d_gt.png" % ind)
         vtk_files.append(root_dir + "region_%d_refine_gt_graph.p" % ind)
 
-    for ind in range(len(raw_files)):
+    for ind in range(start_region, len(raw_files)):
+     print(f"Train region: {ind}")
+  
+
+  
+
         try:
             sat_img = imageio.imread(raw_files[ind] + ".png")
         except:
@@ -212,6 +236,9 @@ if __name__ == "__main__":
         mesh.lines = patch_edge.flatten()
 
         image_id = patch_extract(train_path, sat_img, seg, mesh, image_id)
+         # ذخیره region فعلی در فایل پیشرفت
+        with open(progress_file, "w") as f:
+           f.write(str(ind))
 
     # ============= TEST =============
     test_path = root_dir + "test_data/"
@@ -251,4 +278,5 @@ if __name__ == "__main__":
         mesh.lines = patch_edge.flatten()
 
         image_id = patch_extract(test_path, sat_img, seg, mesh, image_id)
+
 
