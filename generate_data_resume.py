@@ -171,46 +171,43 @@ for x in range(180):
 # MAIN (RESUMABLE)
 # ====================================================
 if __name__ == "__main__":
-    
     root_dir = "/content/drive/MyDrive/relformer_data/20cities/"
 
-    # ============= TRAIN =============
+    # Train path
     train_path = root_dir + "train_data/"
-    os.makedirs(train_path, exist_ok=True)
     os.makedirs(train_path+"raw", exist_ok=True)
     os.makedirs(train_path+"seg", exist_ok=True)
     os.makedirs(train_path+"vtp", exist_ok=True)
 
-    last_id = get_last_saved_index(train_path)
-    print("Resume Train Data from ID =", last_id+1)
-    image_id = last_id + 1
+    # شروع از آخرین image_id موجود
+    image_id = get_last_saved_index(train_path) + 1
+    print(f"Resume Train Data from sample ID = {image_id}")
 
-    raw_files = []
-    seg_files = []
-    vtk_files = []
-
+    raw_files, seg_files, vtk_files = [], [], []
     for ind in indrange_train:
-        raw_files.append(root_dir + "region_%d_sat" % ind)
-        seg_files.append(root_dir + "region_%d_gt.png" % ind)
-        vtk_files.append(root_dir + "region_%d_refine_gt_graph.p" % ind)
+        raw_files.append(root_dir + f"region_{ind}_sat")
+        seg_files.append(root_dir + f"region_{ind}_gt.png")
+        vtk_files.append(root_dir + f"region_{ind}_refine_gt_graph.p")
 
-    for ind in range(len(raw_files)):
+    start_region = 0  # یا هر region که میخوای resume کنه
+    for ind in range(start_region, len(raw_files)):
+        print(f"Train region: {ind}")
         try:
-            sat_img = imageio.imread(raw_files[ind] + ".png")
+            sat_img = imageio.imread(raw_files[ind]+".png")
         except:
-            sat_img = imageio.imread(raw_files[ind] + ".jpg")
+            sat_img = imageio.imread(raw_files[ind]+".jpg")
 
         with open(vtk_files[ind], 'rb') as f:
             graph = pickle.load(f)
         node_array, edge_array = convert_graph(graph)
 
         seg = imageio.imread(seg_files[ind])
-
         patch_coord = np.concatenate((node_array, np.zeros((node_array.shape[0],1))), 1)
         mesh = pyvista.PolyData(patch_coord)
         patch_edge = np.concatenate((np.ones((edge_array.shape[0],1))*2, edge_array), 1)
         mesh.lines = patch_edge.flatten()
 
+        # اجرای patch_extract با image_id resume شده
         image_id = patch_extract(train_path, sat_img, seg, mesh, image_id)
 
     # ============= TEST =============
@@ -251,4 +248,5 @@ if __name__ == "__main__":
         mesh.lines = patch_edge.flatten()
 
         image_id = patch_extract(test_path, sat_img, seg, mesh, image_id)
+
 
