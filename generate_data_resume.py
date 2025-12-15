@@ -100,22 +100,20 @@ def prune_patch(patch_coord_list, patch_edge_list):
     return mod_patch_coord_list, mod_patch_edge_list
 
 def patch_extract(save_path, image, seg, mesh, start_id):
-
     image_id = start_id
     p_h, p_w, _ = patch_size
     pad_h, pad_w, _ = pad
-    p_h = p_h -2*pad_h
-    p_w = p_w -2*pad_w
+    p_h -= 2*pad_h
+    p_w -= 2*pad_w
     
-    h, w, d= image.shape
+    h, w, d = image.shape
     x_ = np.int32(np.linspace(5, h-5-p_h, 32))
     y_ = np.int32(np.linspace(5, w-5-p_w, 32))
-    
     ind = np.meshgrid(x_, y_, indexing='ij')
 
     for i, start in enumerate(list(np.array(ind).reshape(2,-1).T)):
-        start = np.array((start[0],start[1],0))
-        end = start + np.array(patch_size)-1 -2*np.array(pad)
+        start = np.array((start[0], start[1], 0))
+        end = start + np.array(patch_size) - 1 - 2*np.array(pad)
 
         patch = np.pad(image[start[0]:start[0]+p_h, start[1]:start[1]+p_w, :], 
                        ((pad_h,pad_h),(pad_w,pad_w),(0,0)))
@@ -124,26 +122,31 @@ def patch_extract(save_path, image, seg, mesh, start_id):
                            ((pad_h,pad_h),(pad_w,pad_w)))
 
         bounds = [start[0], end[0], start[1], end[1], -0.5, 0.5]
-
         clipped_mesh = mesh.clip_box(bounds, invert=False)
         patch_coordinates = np.float32(np.asarray(clipped_mesh.points))
-        patch_edge = clipped_mesh.cells[np.sum(clipped_mesh.celltypes==1)*2:].reshape(-1,3)
 
+        if patch_coordinates.shape[0] < 2:
+            continue
+
+        if np.sum(clipped_mesh.celltypes==1) == 0:
+            continue
+
+        patch_edge = clipped_mesh.cells[np.sum(clipped_mesh.celltypes==1)*2:].reshape(-1,3)
         patch_coord_ind = np.where((np.prod(patch_coordinates>=start, 1)*np.prod(patch_coordinates<=end, 1))>0.0)
         patch_coordinates = patch_coordinates[patch_coord_ind[0], :]
         patch_edge = [tuple(l) for l in patch_edge[:,1:] if l[0] in patch_coord_ind[0] and l[1] in patch_coord_ind[0]]
 
-        temp = np.array(patch_edge).flatten()
-        temp = [np.where(patch_coord_ind[0] == ind) for ind in temp]
-        patch_edge = np.array(temp).reshape(-1,2)
-
-        if patch_coordinates.shape[0]<2 or patch_edge.shape[0]<1:
+        if len(patch_edge) < 1:
             continue
 
-        patch_coordinates = (patch_coordinates-start+np.array(pad))/np.array(patch_size)
-        mod_coord, mod_edge = prune_patch([patch_coordinates],[patch_edge])
+        temp = np.array(patch_edge)
+        temp = np.array([np.where(patch_coord_ind[0] == ind)[0][0] for edge in temp for ind in edge]).reshape(-1,2)
+        patch_edge = temp.astype(np.int32)
 
-        if patch_seg.sum()>10:
+        patch_coordinates = (patch_coordinates - start + np.array(pad)) / np.array(patch_size)
+        mod_coord, mod_edge = prune_patch([patch_coordinates], [patch_edge])
+
+        if patch_seg.sum() > 10:
             save_input(save_path, image_id, patch, patch_seg, mod_coord[0], mod_edge[0])
             print(f"[DONE] sample {image_id} created.")
             image_id += 1
@@ -251,4 +254,5 @@ if __name__ == "__main__":
         mesh.lines = patch_edge.flatten()
 
         image_id = patch_extract(test_path, sat_img, seg, mesh, image_id)
+
 
