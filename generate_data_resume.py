@@ -252,3 +252,4 @@ if __name__ == "__main__":
 
         image_id = patch_extract(test_path, sat_img, seg, mesh, image_id)
 
+
