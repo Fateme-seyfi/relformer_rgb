@@ -284,10 +284,13 @@ if __name__ == "__main__":
 
         patch_extract(train_path, sat_img, gt_seg, mesh)
 
-    
+    last_test_id = get_last_saved_index(test_path)
+    print("Resume Test Data from ID =", last_test_id + 1)
+    image_id = last_test_id + 1
+
     image_id = 1
     test_path = './data/20cities/test_data/'
-    if not os.path.isdir(test_path):
+    if not os.path.isdir(test_path, exist_ok=True):
         os.makedirs(test_path)
         os.makedirs(test_path+'/seg')
         os.makedirs(test_path+'/vtp')
